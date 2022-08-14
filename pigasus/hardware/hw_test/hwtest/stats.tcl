@@ -105,6 +105,10 @@ set REG_MAX_BYPASS2NF           50
 set REG_MAX_NF2PDU              51
 set REG_SM_BYPASS_AF            52
 set REG_SM_CDC_AF               53
+set REG_PARSER_OUT_BYTES_L      54
+set REG_PARSER_OUT_BYTES_H      55
+set REG_DM_OUT_BYTES_L          56
+set REG_DM_OUT_BYTES_H          57
 
 
 #Flow Control reg
@@ -718,6 +722,10 @@ proc get_top_stats {} {
     global REG_MAX_NF2PDU     
     global REG_SM_BYPASS_AF 
     global REG_SM_CDC_AF    
+    global REG_PARSER_OUT_BYTES_L
+    global REG_PARSER_OUT_BYTES_H
+    global REG_DM_OUT_BYTES_L
+    global REG_DM_OUT_BYTES_H
 
     set fp [open "top_stats.txt" w+]
     read_top_reg REG_IN_PKT                 $REG_IN_PKT                 $fp  
@@ -773,7 +781,10 @@ proc get_top_stats {} {
     read_top_reg REG_MAX_BYPASS2NF          $REG_MAX_BYPASS2NF          $fp 
     read_top_reg REG_MAX_NF2PDU             $REG_MAX_NF2PDU             $fp 
     read_top_reg REG_SM_BYPASS_AF           $REG_SM_BYPASS_AF           $fp 
-    read_top_reg REG_SM_CDC_AF              $REG_SM_CDC_AF              $fp 
+    read_top_reg REG_SM_CDC_AF              $REG_SM_CDC_AF              $fp
+
+    read_top_reg_64b REG_PARSER_OUT_BYTES   $REG_PARSER_OUT_BYTES_L     $REG_PARSER_OUT_BYTES_H     $fp
+    read_top_reg_64b REG_DM_OUT_BYTES       $REG_DM_OUT_BYTES_L         $REG_DM_OUT_BYTES_H         $fp
                                                                       
     close $fp                                                         
 }
@@ -785,6 +796,14 @@ proc read_top_reg {reg_name reg_index fp} {
     puts "$reg_name: $decimal"
     puts $fp "$reg_name: $decimal"
 
+}
+proc read_top_reg_64b {reg_name reg_l_index reg_h_index fp} {
+    global TOP_REG_BASE
+    set rdata_l [reg_read $TOP_REG_BASE $reg_l_index]
+    set rdata_h [reg_read $TOP_REG_BASE $reg_h_index]
+    set decimal [expr ($rdata_h<<32)+$rdata_l]
+    puts "$reg_name: $decimal"
+    puts $fp "$reg_name: $decimal"
 }
 proc set_nf_threshold {threshold} {
     global TOP_REG_BASE
