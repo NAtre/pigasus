@@ -121,7 +121,6 @@ typedef struct packed {
 
 // This is the linked-list entry
 // 1+32+16+16+10+1+56 = 133
-parameter LL_DWIDTH = (1 + 32 + 16 + 16 + PKT_AWIDTH + 1 + 56);
 typedef struct packed {
     logic valid;                    // Valid
     logic [31:0] seq;               // Sequence

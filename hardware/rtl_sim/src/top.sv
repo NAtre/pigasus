@@ -841,8 +841,8 @@ always @(posedge clk_datamover) begin
         if (parser_out_meta_valid & parser_out_meta_ready) begin
             out_pkt_cnt_parser <= out_pkt_cnt_parser + 1;
             out_bytes_cnt_parser <= (out_bytes_cnt_parser +
-                                     parser_out_meta.len +
-                                     parser_out_meta.hdr_len);
+                                     parser_out_meta_data.len +
+                                     parser_out_meta_data.hdr_len);
         end
 
         if (max_parser_fifo < parser_out_meta_csr_readdata) begin
@@ -1545,7 +1545,7 @@ flow_table_wrapper ftw_0 (
     .reorder_meta_data         (ftw_reorder_meta_data),
     .reorder_meta_valid        (ftw_reorder_meta_valid),
     .reorder_meta_ready        (ftw_reorder_meta_ready),
-    .reorder_meta_almost_full  (ftw_reorder_meta_almost_full)
+    .reorder_meta_almost_full  (ftw_reorder_meta_almost_full),
     .scheduler_meta_data       (ftw_scheduler_meta_data),
     .scheduler_meta_valid      (ftw_scheduler_meta_valid),
     .scheduler_meta_ready      (ftw_scheduler_meta_ready),
