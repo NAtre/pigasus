@@ -108,6 +108,11 @@ set NF_MAX_PKT_FIFO     52
 set NF_MAX_PCIE         53
 set NF_MAX_RULE_FIFO    54
 set CTRL_REG            55
+set PARSER_OUT_BYTES_L  56
+set PARSER_OUT_BYTES_H  57
+set DM_OUT_BYTES_L      58
+set DM_OUT_BYTES_H      59
+
 #set STRING_IN_PKT       16
 #set STRING_IN_FLIT      17
 #PCIE reg
@@ -710,6 +715,10 @@ proc get_top_stats {} {
     global NF_MAX_RULE_FIFO
     #global STRING_IN_PKT
     #global STRING_IN_FLIT
+    global PARSER_OUT_BYTES_L
+    global PARSER_OUT_BYTES_H
+    global DM_OUT_BYTES_L
+    global DM_OUT_BYTES_H
 
 
     set fp [open "top_stats.txt" w+]
@@ -769,6 +778,9 @@ proc get_top_stats {} {
     read_top_reg NF_MAX_PCIE $NF_MAX_PCIE $fp
     read_top_reg NF_MAX_RULE_FIFO $NF_MAX_RULE_FIFO $fp
 
+    read_top_reg_64b PARSER_OUT_BYTES   $PARSER_OUT_BYTES_L     $PARSER_OUT_BYTES_H     $fp
+    read_top_reg_64b DM_OUT_BYTES       $DM_OUT_BYTES_L         $DM_OUT_BYTES_H         $fp
+
     close $fp
 }
 
@@ -779,6 +791,14 @@ proc read_top_reg {reg_name reg_index fp} {
     puts "$reg_name: $decimal"
     puts $fp "$reg_name: $decimal"
 
+}
+proc read_top_reg_64b {reg_name reg_l_index reg_h_index fp} {
+    global TOP_REG_BASE
+    set rdata_l [reg_read $TOP_REG_BASE $reg_l_index]
+    set rdata_h [reg_read $TOP_REG_BASE $reg_h_index]
+    set decimal [expr ($rdata_h<<32)+$rdata_l]
+    puts "$reg_name: $decimal"
+    puts $fp "$reg_name: $decimal"
 }
 proc set_nf_threshold {threshold} {
     global TOP_REG_BASE

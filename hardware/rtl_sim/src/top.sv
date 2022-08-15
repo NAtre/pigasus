@@ -81,9 +81,11 @@ logic [31:0]    in_pkt_cnt_status;
 logic [31:0]    out_pkt_cnt_status;
 logic [31:0]    out_pkt_cnt_incomp_status;
 logic [31:0]    out_pkt_cnt_parser_status;
+logic [63:0]    out_bytes_cnt_parser_status;
 logic [31:0]    in_pkt_cnt_ft_status;
 logic [31:0]    out_pkt_cnt_ft_status;
 logic [31:0]    in_pkt_cnt_datamover_status;
+logic [63:0]    in_bytes_cnt_datamover_status;
 logic [31:0]    out_pkt_cnt_datamover_status;
 logic [31:0]    in_pkt_cnt_emptylist_status;
 logic [31:0]    out_pkt_cnt_emptylist_status;
@@ -245,6 +247,14 @@ logic          ftw_reorder_meta_valid;
 metadata_t     ftw_reorder_meta_data;
 logic          ftw_reorder_meta_ready;
 logic          ftw_reorder_meta_almost_full;
+logic          ftw_scheduler_meta_valid;
+metadata_t     ftw_scheduler_meta_data;
+logic          ftw_scheduler_meta_ready;
+logic          ftw_scheduler_meta_almost_full;
+logic          ftw_reassembly_meta_valid;
+metadata_t     ftw_reassembly_meta_data;
+logic          ftw_reassembly_meta_ready;
+logic          ftw_reassembly_meta_almost_full;
 logic          ftw_forward_meta_valid;
 metadata_t     ftw_forward_meta_data;
 logic          ftw_forward_meta_ready;
@@ -563,6 +573,9 @@ logic [31:0] out_pkt_cnt_incomp_r2;
 logic [31:0] out_pkt_cnt_parser;
 logic [31:0] out_pkt_cnt_parser_r1;
 logic [31:0] out_pkt_cnt_parser_r2;
+logic [63:0] out_bytes_cnt_parser;
+logic [63:0] out_bytes_cnt_parser_r1;
+logic [63:0] out_bytes_cnt_parser_r2;
 logic [31:0] in_pkt_cnt_ft;
 logic [31:0] in_pkt_cnt_ft_r1;
 logic [31:0] in_pkt_cnt_ft_r2;
@@ -572,6 +585,9 @@ logic [31:0] out_pkt_cnt_ft_r2;
 logic [31:0] in_pkt_cnt_datamover;
 logic [31:0] in_pkt_cnt_datamover_r1;
 logic [31:0] in_pkt_cnt_datamover_r2;
+logic [63:0] in_bytes_cnt_datamover;
+logic [63:0] in_bytes_cnt_datamover_r1;
+logic [63:0] in_bytes_cnt_datamover_r2;
 logic [31:0] out_pkt_cnt_datamover;
 logic [31:0] out_pkt_cnt_datamover_r1;
 logic [31:0] out_pkt_cnt_datamover_r2;
@@ -786,10 +802,12 @@ always @(posedge clk_datamover) begin
         in_pkt_cnt              <= 0;
         out_pkt_cnt_incomp      <= 0;
         out_pkt_cnt_parser      <= 0;
+        out_bytes_cnt_parser    <= 0;
         max_parser_fifo         <= 0;
         in_pkt_cnt_emptylist    <= 0;
         out_pkt_cnt_emptylist   <= 0;
         in_pkt_cnt_datamover    <= 0;
+        in_bytes_cnt_datamover  <= 0;
         out_pkt_cnt_datamover   <= 0;
         pkt_forward             <= 0;
         pkt_drop                <= 0;
@@ -822,6 +840,9 @@ always @(posedge clk_datamover) begin
 
         if (parser_out_meta_valid & parser_out_meta_ready) begin
             out_pkt_cnt_parser <= out_pkt_cnt_parser + 1;
+            out_bytes_cnt_parser <= (out_bytes_cnt_parser +
+                                     parser_out_meta.len +
+                                     parser_out_meta.hdr_len);
         end
 
         if (max_parser_fifo < parser_out_meta_csr_readdata) begin
@@ -830,6 +851,12 @@ always @(posedge clk_datamover) begin
 
         if (data_mover_in_meta_ready & data_mover_in_meta_valid) begin
             in_pkt_cnt_datamover <= in_pkt_cnt_datamover + 1;
+
+            if (data_mover_in_meta_data.pkt_flags != PKT_DROP) begin
+                in_bytes_cnt_datamover <= (in_bytes_cnt_datamover +
+                                           data_mover_in_meta_data.len +
+                                           data_mover_in_meta_data.hdr_len);
+            end
         end
         if (emptylist_in_valid & emptylist_in_ready) begin
             in_pkt_cnt_emptylist <= in_pkt_cnt_emptylist + 1;
@@ -1015,6 +1042,9 @@ always @(posedge clk_status) begin
     out_pkt_cnt_parser_r1           <= out_pkt_cnt_parser;
     out_pkt_cnt_parser_r2           <= out_pkt_cnt_parser_r1;
     out_pkt_cnt_parser_status       <= out_pkt_cnt_parser_r2;
+    out_bytes_cnt_parser_r1         <= out_bytes_cnt_parser;
+    out_bytes_cnt_parser_r2         <= out_bytes_cnt_parser_r1;
+    out_bytes_cnt_parser_status     <= out_bytes_cnt_parser_r2;
     in_pkt_cnt_ft_r1                <= in_pkt_cnt_ft;
     in_pkt_cnt_ft_r2                <= in_pkt_cnt_ft_r1;
     in_pkt_cnt_ft_status            <= in_pkt_cnt_ft_r2;
@@ -1024,6 +1054,9 @@ always @(posedge clk_status) begin
     in_pkt_cnt_datamover_r1         <= in_pkt_cnt_datamover;
     in_pkt_cnt_datamover_r2         <= in_pkt_cnt_datamover_r1;
     in_pkt_cnt_datamover_status     <= in_pkt_cnt_datamover_r2;
+    in_bytes_cnt_datamover_r1       <= in_bytes_cnt_datamover;
+    in_bytes_cnt_datamover_r2       <= in_bytes_cnt_datamover_r1;
+    in_bytes_cnt_datamover_status   <= in_bytes_cnt_datamover_r2;
     out_pkt_cnt_datamover_r1        <= out_pkt_cnt_datamover;
     out_pkt_cnt_datamover_r2        <= out_pkt_cnt_datamover_r1;
     out_pkt_cnt_datamover_status    <= out_pkt_cnt_datamover_r2;
@@ -1251,6 +1284,10 @@ always @(posedge clk_status) begin
                 8'd53  : status_readdata_top <= nf_max_pcie_status;
                 8'd54  : status_readdata_top <= nf_max_rule_fifo_status;
                 8'd55  : status_readdata_top <= ctrl_status;
+                8'd56  : status_readdata_top <= out_bytes_cnt_parser_status[31:0];
+                8'd57  : status_readdata_top <= out_bytes_cnt_parser_status[63:32];
+                8'd58  : status_readdata_top <= in_bytes_cnt_datamover_status[31:0];
+                8'd59  : status_readdata_top <= in_bytes_cnt_datamover_status[63:32];
 
                 default : status_readdata_top <= 32'h345;
             endcase
@@ -1509,6 +1546,10 @@ flow_table_wrapper ftw_0 (
     .reorder_meta_valid        (ftw_reorder_meta_valid),
     .reorder_meta_ready        (ftw_reorder_meta_ready),
     .reorder_meta_almost_full  (ftw_reorder_meta_almost_full)
+    .scheduler_meta_data       (ftw_scheduler_meta_data),
+    .scheduler_meta_valid      (ftw_scheduler_meta_valid),
+    .scheduler_meta_ready      (ftw_scheduler_meta_ready),
+    .scheduler_meta_almost_full(ftw_scheduler_meta_almost_full)
     //.clk_status                (clk_status),
     //.status_addr               (status_addr),
     //.status_read               (status_read),
@@ -1523,19 +1564,42 @@ arb_2_wrapper_infill #(
     .DEPTH(512),
     .FULL_LEVEL(480)
 )
+arb_reassembly(
+    .clk              (clk),
+    .rst              (rst),
+    .clk_out          (clk),
+    .rst_out          (rst),
+    .in_data_0        (ftw_scheduler_meta_data),
+    .in_valid_0       (ftw_scheduler_meta_valid),
+    .in_ready_0       (ftw_scheduler_meta_ready),
+    .in_almost_full_0 (ftw_scheduler_meta_almost_full),
+    .in_data_1        (ftw_reorder_meta_data),
+    .in_valid_1       (ftw_reorder_meta_valid),
+    .in_ready_1       (ftw_reorder_meta_ready),
+    .in_almost_full_1 (ftw_reorder_meta_almost_full),
+    .out_data         (ftw_reassembly_meta_data),
+    .out_valid        (ftw_reassembly_meta_valid),
+    .out_ready        (ftw_reassembly_meta_ready)
+);
+
+arb_2_wrapper_infill #(
+    .DWIDTH(META_WIDTH),
+    .DEPTH(512),
+    .FULL_LEVEL(480)
+)
 arb_inorder_ooo(
     .clk              (clk),
     .rst              (rst),
     .clk_out          (clk),
     .rst_out          (rst),
-    .in_data_0        (ftw_out_meta_data),
-    .in_valid_0       (ftw_out_meta_valid),
-    .in_ready_0       (ftw_out_meta_ready),
-    .in_almost_full_0 (ftw_out_meta_almost_full),
-    .in_data_1        (ftw_reorder_meta_data),
-    .in_valid_1       (ftw_reorder_meta_valid),
-    .in_ready_1       (ftw_reorder_meta_ready),
-    .in_almost_full_1 (ftw_reorder_meta_almost_full),
+    .in_data_0        (ftw_reassembly_meta_data),
+    .in_valid_0       (ftw_reassembly_meta_valid),
+    .in_ready_0       (ftw_reassembly_meta_ready),
+    .in_almost_full_0 (ftw_reassembly_meta_almost_full),
+    .in_data_1        (ftw_out_meta_data),
+    .in_valid_1       (ftw_out_meta_valid),
+    .in_ready_1       (ftw_out_meta_ready),
+    .in_almost_full_1 (ftw_out_meta_almost_full),
     .out_data         (ftw_nonforward_meta_data),
     .out_valid        (ftw_nonforward_meta_valid),
     .out_ready        (ftw_nonforward_meta_ready)

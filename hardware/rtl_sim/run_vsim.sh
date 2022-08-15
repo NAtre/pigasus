@@ -24,6 +24,7 @@ vlog ./src/common/*.sv -sv
 vlog ./src/common/*.v
 vlog ./src/mspm/string_matcher/*.sv -sv
 vlog ./src/mspm/non_fast_pattern/*.sv -sv
+vlog ./src/surge_protector/*.sv -sv
 
 #GUI full debug
 #vsim tb -L $altera_mf_ver -L $altera_lnsim_ver -L $altera_ver -L $lpm_ver -L $sgate_ver -L $fourteennm_ver -L $fourteennm_ct1_ver -voptargs="+acc"
