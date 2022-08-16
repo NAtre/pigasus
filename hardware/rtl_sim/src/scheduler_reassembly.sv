@@ -68,7 +68,9 @@ module scheduler_reassembly(
     output  metadata_t              out_reassembly_fifo_meta,
     output  logic                   out_reassembly_fifo_valid,
     input   logic                   out_reassembly_fifo_ready,
-    input   logic                   out_reassembly_fifo_almost_full
+    input   logic                   out_reassembly_fifo_almost_full,
+    // Toggle between WSJF/FCFS
+    input   logic                   emulate_fcfs
 );
 
 integer i;
@@ -683,7 +685,10 @@ always @(*) begin
             num_flits = in_meta_data_r2.flits;
             heap_in_enque_ooo_flow_id = in_fce_data_r2.ooo_flow_id;
 
-            if (fc_q_a_r.ll_size == 0) begin
+            if (emulate_fcfs) begin
+                heap_in_enque_priority = 0;
+            end
+            else if (fc_q_a_r.ll_size == 0) begin
                 heap_in_enque_priority = (
                     exponent_pos ? (1 << exponent) :
                                    (1 >> exponent));
@@ -955,12 +960,17 @@ always @(*) begin
                     (reassembly_service_fsm_fc_data_r.ll_size << exponent) :
                     (reassembly_service_fsm_fc_data_r.ll_size >> exponent));
 
-                heap_in_enque_priority = (
-                    heap_in_enque_priority_padded[
-                        HEAP_PRIORITY_PADDED_AWIDTH-1:
-                        HEAP_PRIORITY_AWIDTH] != 0) ?
-                    {HEAP_PRIORITY_AWIDTH{1'b1}} :
-                    heap_in_enque_priority_padded;
+                if (emulate_fcfs) begin
+                    heap_in_enque_priority = 0;
+                end
+                else begin
+                    heap_in_enque_priority = (
+                        heap_in_enque_priority_padded[
+                            HEAP_PRIORITY_PADDED_AWIDTH-1:
+                            HEAP_PRIORITY_AWIDTH] != 0) ?
+                        {HEAP_PRIORITY_AWIDTH{1'b1}} :
+                        heap_in_enque_priority_padded;
+                end
 
                 // Indicate completion, return to idle
                 reassembly_wrch_ready = 1;
@@ -1501,7 +1511,6 @@ ooo_flow_ll_entries_nextptr (
 );
 
 // Bounded queue
-if (SCHEDULER_REASSEMBLY_POLICY == "WSJF") begin
 bounded_wsjf_queue wsjf_queue (
     // General inputs
     .clk(clk),
@@ -1523,33 +1532,6 @@ bounded_wsjf_queue wsjf_queue (
     .queue_ready(), // Unused
     .queue_size(heap_size)
 );
-end
-else if (SCHEDULER_REASSEMBLY_POLICY == "FCFS") begin
-bounded_fcfs_queue fcfs_queue (
-    // General inputs
-    .clk(clk),
-    .rst(rst),
-    .in_enque_en(heap_in_enque_en),
-    .in_enque_ooo_flow_id(heap_in_enque_ooo_flow_id),
-    .in_enque_priority(heap_in_enque_priority),
-    .in_enque_ready(heap_in_enque_ready),
-    .out_deque_min_en(heap_out_deque_min_en),
-    .out_deque_min_ready(heap_out_deque_min_ready),
-    .out_deque_min_ooo_flow_id(heap_out_deque_min_ooo_flow_id),
-    .out_deque_min_priority(heap_out_deque_min_priority),
-    .in_deque_max_req_en(heap_in_deque_max_req_en),
-    .in_deque_max_req_ready(heap_in_deque_max_req_ready),
-    .out_deque_max_en(heap_out_deque_max_en),
-    .out_deque_max_ready(heap_out_deque_max_ready),
-    .out_deque_max_ooo_flow_id(heap_out_deque_max_ooo_flow_id),
-    .out_deque_max_priority(heap_out_deque_max_priority),
-    .queue_ready(), // Unused
-    .queue_size(heap_size)
-);
-end
-else begin
-$error("[SC] Unimplemented scheduling policy.");
-end
 
 // Flow reassembly
 flow_reassembly flow_reassembly_inst (

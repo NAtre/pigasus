@@ -20,7 +20,8 @@ module flow_table_wrapper(
     output  metadata_t      scheduler_meta_data,
     output  logic           scheduler_meta_valid,
     input   logic           scheduler_meta_ready,
-    input   logic           scheduler_meta_almost_full
+    input   logic           scheduler_meta_almost_full,
+    input   logic           emulate_fcfs
 );
 
 tuple_t         h0_tuple_in;
@@ -568,7 +569,8 @@ scheduler_reassembly scheduler_inst(
     .out_reassembly_fifo_meta       (reorder_meta_data),
     .out_reassembly_fifo_valid      (reorder_meta_valid),
     .out_reassembly_fifo_ready      (reorder_meta_ready),
-    .out_reassembly_fifo_almost_full(reorder_meta_almost_full)
+    .out_reassembly_fifo_almost_full(reorder_meta_almost_full),
+    .emulate_fcfs                   (emulate_fcfs)
 );
 
 // OOO flow IDs free-list

@@ -7,7 +7,7 @@
 `define NO_C2F
 // `define NO_BP
 
-// `define ENABLE_SURGEPROTECTOR
+`define ENABLE_SURGEPROTECTOR
 
 // Reassembler scheduling policy
 `ifdef ENABLE_SURGEPROTECTOR

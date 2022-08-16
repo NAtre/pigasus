@@ -112,6 +112,7 @@ set PARSER_OUT_BYTES_L  56
 set PARSER_OUT_BYTES_H  57
 set DM_OUT_BYTES_L      58
 set DM_OUT_BYTES_H      59
+set EMULATE_FCFS        60
 
 #set STRING_IN_PKT       16
 #set STRING_IN_FLIT      17
@@ -719,7 +720,7 @@ proc get_top_stats {} {
     global PARSER_OUT_BYTES_H
     global DM_OUT_BYTES_L
     global DM_OUT_BYTES_H
-
+    global EMULATE_FCFS
 
     set fp [open "top_stats.txt" w+]
     read_top_reg IN_PKT $IN_PKT $fp
@@ -781,6 +782,8 @@ proc get_top_stats {} {
     read_top_reg_64b PARSER_OUT_BYTES   $PARSER_OUT_BYTES_L     $PARSER_OUT_BYTES_H     $fp
     read_top_reg_64b DM_OUT_BYTES       $DM_OUT_BYTES_L         $DM_OUT_BYTES_H         $fp
 
+    read_top_reg EMULATE_FCFS $EMULATE_FCFS $fp
+
     close $fp
 }
 
@@ -809,6 +812,13 @@ proc set_nf_threshold {threshold} {
 
     reg_write $TOP_REG_BASE $CTRL_REG $threshold
 }
+proc set_emulate_fcfs {value} {
+    global TOP_REG_BASE
+    global EMULATE_FCFS
+
+    reg_write $TOP_REG_BASE $EMULATE_FCFS $value
+}
+
 ################## sanity_check ##################
 
 proc sanity_check {} {

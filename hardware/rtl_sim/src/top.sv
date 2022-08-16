@@ -138,6 +138,7 @@ logic [31:0]    nf_max_pkt_fifo_status;
 logic [31:0]    nf_max_pcie_status;
 logic [31:0]    nf_max_rule_fifo_status;
 logic [31:0]    ctrl_status;
+logic           emulate_fcfs_status;
 
 // Register I/O
 logic  [511:0]  out_data;
@@ -1031,6 +1032,10 @@ always @(posedge clk_pcie) begin
     end
 end
 
+initial begin
+    emulate_fcfs_status = 0;
+end
+
 // Sync
 always @(posedge clk_status) begin
     in_pkt_cnt_r1                   <= in_pkt_cnt;
@@ -1288,6 +1293,7 @@ always @(posedge clk_status) begin
                 8'd57  : status_readdata_top <= out_bytes_cnt_parser_status[63:32];
                 8'd58  : status_readdata_top <= in_bytes_cnt_datamover_status[31:0];
                 8'd59  : status_readdata_top <= in_bytes_cnt_datamover_status[63:32];
+                8'd60  : status_readdata_top <= emulate_fcfs_status;
 
                 default : status_readdata_top <= 32'h345;
             endcase
@@ -1298,6 +1304,9 @@ always @(posedge clk_status) begin
         case (status_addr_r)
             8'd55: begin
                 ctrl_status   <= status_writedata_r;
+            end
+            8'd60: begin
+                emulate_fcfs_status <= status_writedata_r[0];
             end
             default: ctrl_status <= 32'b0;
         endcase
@@ -1549,7 +1558,8 @@ flow_table_wrapper ftw_0 (
     .scheduler_meta_data       (ftw_scheduler_meta_data),
     .scheduler_meta_valid      (ftw_scheduler_meta_valid),
     .scheduler_meta_ready      (ftw_scheduler_meta_ready),
-    .scheduler_meta_almost_full(ftw_scheduler_meta_almost_full)
+    .scheduler_meta_almost_full(ftw_scheduler_meta_almost_full),
+    .emulate_fcfs              (emulate_fcfs_status)
     //.clk_status                (clk_status),
     //.status_addr               (status_addr),
     //.status_read               (status_read),
