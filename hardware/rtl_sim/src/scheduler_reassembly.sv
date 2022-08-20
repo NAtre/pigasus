@@ -51,10 +51,6 @@ module scheduler_reassembly(
     input   fce_t                   in_fce_data,
     input   logic                   in_fce_valid,
     output  logic                   in_fce_ready,
-    // Incoming FT tokens
-    input   scheduler_token_t       in_token_data,
-    input   logic                   in_token_valid,
-    output  logic                   in_token_ready,
     // Outgoing FT updates
     output  logic                   ft_update_fifo_empty,
     input   logic                   ft_update_fifo_rdreq,
@@ -106,9 +102,7 @@ typedef enum logic [2:0] {
     FT_SERVICE_FSM_STATE_IDLE,
     FT_SERVICE_FSM_STATE_DATA_RD,
     FT_SERVICE_FSM_STATE_DATA_WR,
-    FT_SERVICE_FSM_STATE_DATA_INSERT_HEAP,
-    FT_SERVICE_FSM_STATE_CTRL_RD,
-    FT_SERVICE_FSM_STATE_CTRL_WR
+    FT_SERVICE_FSM_STATE_DATA_INSERT_HEAP
 } ft_service_fsm_state_t;
 
 // Reassembly service FSM
@@ -328,7 +322,6 @@ metadata_t in_meta_data_r1;
 metadata_t in_meta_data_r2;
 ooo_flow_fc_entry_t fc_q_a_r;
 ooo_flow_fc_entry_t fc_data_a_r;
-scheduler_token_t in_token_data_r;
 logic [OOO_FLOW_LL_ENTRY_AWIDTH-1:0] fl_q_r;
 ooo_flow_ll_entry_ptr_t lle_nextptr_data_a_r;
 
@@ -349,7 +342,6 @@ initial begin
     in_fce_data_r2 = 0;
     in_meta_data_r1 = 0;
     in_meta_data_r2 = 0;
-    in_token_data_r = 0;
 
     reassembly_service_fsm_fc_q_r = 0;
     reassembly_service_fsm_fc_data_r = 0;
@@ -449,7 +441,6 @@ always @(*) begin
 
     in_fce_ready = 0;
     in_meta_ready = 0;
-    in_token_ready = 0;
 
     out_sched_fifo_meta_int = 0;
     out_sched_fifo_valid_int = 0;
@@ -568,20 +559,11 @@ always @(*) begin
     case (ft_service_fsm_state)
         // Idle state.
         FT_SERVICE_FSM_STATE_IDLE: begin
-            // High priority: If the token channel (from FT)
-            // is not empty, perform the scheduler operation.
-            // Since this is not predicated on any resource
-            // availability (free LL entries, etc.), it can
-            // always proceed without stalling.
-            if (in_token_valid) begin
-                ft_service_fsm_state_next = FT_SERVICE_FSM_STATE_CTRL_RD;
-            end
-            // Low priority: If the input (metadata and FCE)
-            // FIFOs contain valid entries, the LL free-list
-            // is not empty, and the scheduler's output FIFO
-            // is not full, proceed to read state.
-            else if (in_meta_valid && in_fce_valid &&
-                     !fl_empty && !out_sched_fifo_almost_full) begin
+            // If the input (metadata, FCE) FIFOs contain valid entries,
+            // the LL free-list is not empty, and the scheduler's output
+            // FIFO is not full, proceed to read state.
+            if (in_meta_valid && in_fce_valid &&
+                !fl_empty && !out_sched_fifo_almost_full) begin
                 ft_service_fsm_state_next = FT_SERVICE_FSM_STATE_DATA_RD;
             end
         end
@@ -620,9 +602,43 @@ always @(*) begin
             // Return to idle
             ft_service_fsm_state_next = FT_SERVICE_FSM_STATE_IDLE;
 
+            // If this is the first out-of-order packet for this
+            // flow (indicated by a slow count of 0), update the
+            // flow table and GC register file. We're implicitly
+            // allocating a new flow context here.
+            if (in_fce_data_r1.slow_cnt == 0) begin
+                // Write back the FC
+                fc_wren_a = 1;
+                fc_data_a = 0;
+                fc_address_a = in_fce_data_r1.ooo_flow_id;
+
+                // Write back the GC entry
+                gc_wren[0] = 1;
+                gc_wr_data[0] = 0;
+                gc_wr_address[0] = in_fce_data_r1.ooo_flow_id;
+
+                // Allocate the flow context
+                fc_data_a.valid = 1;
+                fc_data_a.seq = in_fce_data_r1.seq;
+                fc_data_a.ooo_flow_ll.head = fl_q_r;
+                fc_data_a.ooo_flow_ll.tail = fl_q_r;
+                fc_data_a.addr0 = in_fce_data_r1.addr0;
+                fc_data_a.addr1 = in_fce_data_r1.addr1;
+                fc_data_a.addr2 = in_fce_data_r1.addr2;
+                fc_data_a.addr3 = in_fce_data_r1.addr3;
+                fc_data_a.tuple = in_fce_data_r1.tuple;
+
+                // Deque the free-list FIFO
+                fl_rdreq = 1;
+                gc_dec_ooo_flow_fl_size = 1;
+
+                // Move to the heap insertion state
+                ft_service_fsm_state_next = (
+                    FT_SERVICE_FSM_STATE_DATA_INSERT_HEAP);
+            end
             // If the corresponding OOO flow is valid and
             // is not marked for GC, commit the update.
-            if (ft_service_fsm_ooo_flow_valid) begin
+            else if (ft_service_fsm_ooo_flow_valid) begin
                 // Write back the FC
                 fc_wren_a = 1;
                 fc_data_a = fc_q_a;
@@ -646,17 +662,6 @@ always @(*) begin
                 end
                 // Update the tail pointer
                 fc_data_a.ooo_flow_ll.tail = fl_q_r;
-
-                // If this is the first out-of-order packet for
-                // this flow (indicated by a slow count of 0),
-                // update the sequence number and FT address.
-                if (in_fce_data_r1.slow_cnt == 0) begin
-                    fc_data_a.seq = in_fce_data_r1.seq;
-                    fc_data_a.addr0 = in_fce_data_r1.addr0;
-                    fc_data_a.addr1 = in_fce_data_r1.addr1;
-                    fc_data_a.addr2 = in_fce_data_r1.addr2;
-                    fc_data_a.addr3 = in_fce_data_r1.addr3;
-                end
 
                 // Deque the free-list FIFO
                 fl_rdreq = 1;
@@ -705,46 +710,6 @@ always @(*) begin
                     {HEAP_PRIORITY_AWIDTH{1'b1}} :
                     heap_in_enque_priority_padded;
             end
-        end
-        // (Ctrl) read state: Read the entry in the
-        // context table corresponding to the given
-        // OOO flow ID and deque the token channel.
-        FT_SERVICE_FSM_STATE_CTRL_RD: begin
-            // Proceed to write
-            ft_service_fsm_state_next = FT_SERVICE_FSM_STATE_CTRL_WR;
-
-            // Initiate FC read
-            fc_rden_a = 1;
-            fc_address_a = in_token_data.ooo_flow_id;
-
-            // Read the GC register file
-            gc_rden[0] = 1;
-            gc_rd_address[0] = in_token_data.ooo_flow_id;
-
-            // Deque the token channel
-            in_token_ready = 1;
-        end
-        // (Ctrl) write state: Update the flow
-        // context table and GC register file.
-        FT_SERVICE_FSM_STATE_CTRL_WR: begin
-            // Return to idle
-            ft_service_fsm_state_next = FT_SERVICE_FSM_STATE_IDLE;
-
-            // Write back the FC
-            fc_wren_a = 1;
-            fc_data_a = 0;
-            fc_address_a = in_token_data_r.ooo_flow_id;
-
-            // Write back the GC entry
-            gc_wren[0] = 1;
-            gc_wr_data[0] = 0;
-            gc_wr_address[0] = in_token_data_r.ooo_flow_id;
-
-            // Allocate the flow context
-            fc_data_a.valid = 1;
-            fc_data_a.tuple = in_token_data_r.tuple;
-            fc_data_a.ooo_flow_ll.head = OOO_FLOW_LL_INVALID_PTR;
-            fc_data_a.ooo_flow_ll.tail = OOO_FLOW_LL_INVALID_PTR;
         end
         default: begin
             ft_service_fsm_state_next = FT_SERVICE_FSM_STATE_IDLE;
@@ -1210,7 +1175,6 @@ always @(posedge clk) begin
         fc_rden_b_r <= 0;
         in_fce_data_r1 <= 0;
         in_meta_data_r1 <= 0;
-        in_token_data_r <= 0;
         lle_nextptr_rden_b_r <= 0;
         lle_nextptr_data_a_r <= 0;
 
@@ -1317,7 +1281,6 @@ always @(posedge clk) begin
         in_meta_data_r1 <= in_meta_data;
         in_meta_data_r2 <= in_meta_data_r1;
 
-        in_token_data_r <= in_token_data;
         gc_fsm_state <= gc_fsm_state_next;
         ft_service_fsm_state <= ft_service_fsm_state_next;
         gc_response_fsm_state <= gc_response_fsm_state_next;
@@ -1346,8 +1309,14 @@ always @(posedge clk) begin
             end
         end
 
-        if ((ft_service_fsm_state == FT_SERVICE_FSM_STATE_DATA_WR) &&
-            ft_service_fsm_ooo_flow_valid && (in_fce_data_r1.slow_cnt != 0)) begin
+        // Sanity checks
+        if (ft_service_fsm_state == FT_SERVICE_FSM_STATE_DATA_WR) begin
+            assert(!((in_fce_data_r1.slow_cnt == 0) ^ !in_fce_data_r1.ooo_flow_id_valid))
+            else begin
+                $error("[SC] OOO flow ID from FTW should be invalid iff slow count is 0");
+                $finish;
+            end
+            if (ft_service_fsm_ooo_flow_valid && (in_fce_data_r1.slow_cnt != 0)) begin
                 // Sanity check: The OOO flow state should be consistent
                 // with the corresponding flow context in the primary FT.
                 assert(fc_q_a.tuple == in_fce_data_r1.tuple)
@@ -1355,6 +1324,7 @@ always @(posedge clk) begin
                     $error("[SC] OOO flow state is inconsistent with FT");
                     $finish;
                 end
+            end
         end
     end
     // DEBUG

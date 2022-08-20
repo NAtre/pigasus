@@ -164,12 +164,6 @@ typedef logic [HEAP_PRIORITY_AWIDTH-1:0] heap_priority_t;
 typedef logic [OOO_FLOW_LL_ENTRY_PTR_T_WIDTH-1:0] ooo_flow_ll_entry_ptr_t;
 
 typedef struct packed {
-    tuple_t tuple;
-    ooo_flow_id_t ooo_flow_id;
-} scheduler_token_t;
-parameter SCHEDULER_TOKEN_T_WIDTH = (TUPLE_DWIDTH + OOO_FLOW_ID_AWIDTH);
-
-typedef struct packed {
     ooo_flow_ll_entry_ptr_t head;
     ooo_flow_ll_entry_ptr_t tail;
 } ooo_flow_list_t;
