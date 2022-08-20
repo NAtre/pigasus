@@ -1300,7 +1300,7 @@ always @(posedge clk) begin
 
         // Sanity checks
         if (ft_service_fsm_state == FT_SERVICE_FSM_STATE_DATA_WR) begin
-            assert((in_fce_data_r1.slow_cnt == 0) ^ !in_fce_data_r1.ooo_flow_id_valid)
+            assert(!((in_fce_data_r1.slow_cnt == 0) ^ !in_fce_data_r1.ooo_flow_id_valid))
             else begin
                 $error("[SC] OOO flow ID from FTW should be invalid iff slow count is 0");
                 $finish;
