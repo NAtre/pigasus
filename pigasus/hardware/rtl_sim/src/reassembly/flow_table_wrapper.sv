@@ -108,14 +108,6 @@ logic               r_fce_ready;
 logic [31:0]        meta_csr_readdata;
 logic [31:0]        ooo_csr_readdata;
 logic               ooo_almost_full;
-scheduler_token_t   out_sched_token_data;
-logic               out_sched_token_valid;
-logic               out_sched_token_ready;
-scheduler_token_t   r_sched_token_data;
-logic               r_sched_token_valid;
-logic               r_sched_token_ready;
-logic [31:0]        sched_token_csr_readdata;
-logic               sched_token_fifo_almost_full;
 
 // OOO flow ID management
 logic ooo_flow_ids_fl_rdreq;
@@ -190,10 +182,6 @@ end
 
 always @(posedge clk) begin
     ooo_flow_ids_fl_rdreq <= 0;
-    if (sched_token_fifo_almost_full) begin
-        $error("[FTW] Scheduler token FIFO is almost full");
-        $finish;
-    end
 
     if (rst) begin
         ch1_opcode                  <= 0;
@@ -204,8 +192,6 @@ always @(posedge clk) begin
         ooo_meta_valid              <= 0;
         ooo_fce_valid               <= 0;
         ooo_flow_ids_fl_data_init   <= 0;
-        out_sched_token_data        <= 0;
-        out_sched_token_valid       <= 0;
         ooo_flow_ids_fl_state       <= OOO_FLOW_IDS_FL_INIT;
     end
     // Initialize the OOO flow IDs free-list
@@ -237,9 +223,6 @@ always @(posedge clk) begin
         ooo_meta_valid <= 0;
         ooo_meta_data <= m10;
         ooo_meta_data.pkt_flags <= PKT_CHECK;
-
-        out_sched_token_data <= 0;
-        out_sched_token_valid <= 0;
 
         ooo_fce_valid <= 0;
         ooo_fce_data <= ch0_q;
@@ -316,13 +299,9 @@ always @(posedge clk) begin
                             $finish;
                         end
 
-                        // Insert op into the scheduler token FIFO
-                        out_sched_token_valid <= 1;
-                        out_sched_token_data.tuple <= ch0_q.tuple;
-                        out_sched_token_data.ooo_flow_id <= ooo_flow_ids_fl_q;
-
-                        if (!out_sched_token_ready) begin
-                            $error("[FTW] Scheduler token FIFO is not ready");
+                        // Should be the first OOO packet of this flow
+                        if (ch0_q.slow_cnt != 0) begin
+                            $error("[FTW] OOO flow ID is is invalid, but slow count is non-zero");
                             $finish;
                         end
 
@@ -551,9 +530,6 @@ scheduler_reassembly scheduler_inst(
     .in_fce_data                    (r_fce_data),
     .in_fce_valid                   (r_fce_valid),
     .in_fce_ready                   (r_fce_ready),
-    .in_token_data                  (r_sched_token_data),
-    .in_token_valid                 (r_sched_token_valid),
-    .in_token_ready                 (r_sched_token_ready),
     .ft_update_fifo_empty           (ft_update_fifo_empty),
     .ft_update_fifo_rdreq           (ft_update_fifo_rdreq),
     .ft_update_fifo_q               (ft_update_fifo_q),
@@ -583,31 +559,6 @@ ooo_flow_ids_fl_fifo (
     .full(), // Unused
     .q(ooo_flow_ids_fl_q),
     .usedw() // Unused
-);
-
-unified_fifo  #(
-    .FIFO_NAME        ("[flow_table_wrapper] scheduler_token_fifo"),
-    .MEM_TYPE         ("M20K"),
-    .DUAL_CLOCK       (0),
-    .USE_ALMOST_FULL  (1),
-    .FULL_LEVEL       (112),
-    .SYMBOLS_PER_BEAT (1),
-    .BITS_PER_SYMBOL  (SCHEDULER_TOKEN_T_WIDTH),
-    .FIFO_DEPTH       (128)
-) scheduler_token_fifo (
-    .in_clk            (clk),
-    .in_reset          (rst),
-    .out_clk           (),//not used
-    .out_reset         (),
-    .in_data           (out_sched_token_data),
-    .in_valid          (out_sched_token_valid),
-    .in_ready          (out_sched_token_ready),
-    .out_data          (r_sched_token_data),
-    .out_valid         (r_sched_token_valid),
-    .out_ready         (r_sched_token_ready),
-    .fill_level        (),
-    .almost_full       (sched_token_fifo_almost_full),
-    .overflow          ()
 );
 
 endmodule
