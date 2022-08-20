@@ -617,6 +617,7 @@ always @(*) begin
 
                 // Allocate the flow context
                 fc_data_a.valid = 1;
+                fc_data_a.seq = in_fce_data_r1.seq;
                 fc_data_a.ooo_flow_ll.head = fl_q_r;
                 fc_data_a.ooo_flow_ll.tail = fl_q_r;
                 fc_data_a.addr0 = in_fce_data_r1.addr0;
