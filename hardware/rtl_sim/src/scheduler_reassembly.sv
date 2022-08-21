@@ -75,10 +75,10 @@ integer i;
  * Local parameters.
  */
 // Free lists
-localparam OOO_FLOW_FL_LOW_WATERMARK    = 32;
-localparam REASSEMBLY_FL_LOW_WATERMARK  = 32;
+localparam OOO_FLOW_FL_LOW_WATERMARK    = 64;
+localparam REASSEMBLY_FL_LOW_WATERMARK  = 64;
 // Miscellaneous
-localparam REASSEMBLY_GC_FIFO_DEPTH     = 4;
+localparam REASSEMBLY_GC_FIFO_DEPTH     = 8;
 localparam FT_UPDATE_FIFO_DEPTH         = 16;
 localparam HEAP_PRIORITY_PADDED_AWIDTH  = (HEAP_PRIORITY_AWIDTH + 3);
 localparam PRIORITY_SCALING_FACTOR      = (HEAP_NUM_PRIORITIES / 128);
