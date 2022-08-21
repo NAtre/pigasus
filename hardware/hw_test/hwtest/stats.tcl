@@ -113,6 +113,7 @@ set PARSER_OUT_BYTES_H  57
 set DM_OUT_BYTES_L      58
 set DM_OUT_BYTES_H      59
 set EMULATE_FCFS        60
+set FORWARD_PKT_CNT     61
 
 #set STRING_IN_PKT       16
 #set STRING_IN_FLIT      17
@@ -721,6 +722,7 @@ proc get_top_stats {} {
     global DM_OUT_BYTES_L
     global DM_OUT_BYTES_H
     global EMULATE_FCFS
+    global FORWARD_PKT_CNT
 
     set fp [open "top_stats.txt" w+]
     read_top_reg IN_PKT $IN_PKT $fp
@@ -783,6 +785,7 @@ proc get_top_stats {} {
     read_top_reg_64b DM_OUT_BYTES       $DM_OUT_BYTES_L         $DM_OUT_BYTES_H         $fp
 
     read_top_reg EMULATE_FCFS $EMULATE_FCFS $fp
+    read_top_reg FORWARD_PKT_CNT $FORWARD_PKT_CNT $fp
 
     close $fp
 }

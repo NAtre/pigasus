@@ -139,6 +139,7 @@ logic [31:0]    nf_max_pcie_status;
 logic [31:0]    nf_max_rule_fifo_status;
 logic [31:0]    ctrl_status;
 logic           emulate_fcfs_status;
+logic [31:0]    nf_forward_pkt_cnt_status;
 
 // Register I/O
 logic  [511:0]  out_data;
@@ -758,6 +759,9 @@ logic [31:0] nf_max_pcie_r2;
 logic [31:0] nf_max_rule_fifo;
 logic [31:0] nf_max_rule_fifo_r1;
 logic [31:0] nf_max_rule_fifo_r2;
+logic [31:0] nf_forward_pkt_cnt;
+logic [31:0] nf_forward_pkt_cnt_r1;
+logic [31:0] nf_forward_pkt_cnt_r2;
 
 assign clk_rule = clk;
 assign rst_rule = rst;
@@ -1218,6 +1222,9 @@ always @(posedge clk_status) begin
     nf_max_rule_fifo_r1             <= nf_max_rule_fifo;
     nf_max_rule_fifo_r2             <= nf_max_rule_fifo_r1;
     nf_max_rule_fifo_status         <= nf_max_rule_fifo_r2;
+    nf_forward_pkt_cnt_r1           <= nf_forward_pkt_cnt;
+    nf_forward_pkt_cnt_r2           <= nf_forward_pkt_cnt_r1;
+    nf_forward_pkt_cnt_status       <= nf_forward_pkt_cnt_r2;
 end
 //registers
 always @(posedge clk_status) begin
@@ -1294,6 +1301,7 @@ always @(posedge clk_status) begin
                 8'd58  : status_readdata_top <= in_bytes_cnt_datamover_status[31:0];
                 8'd59  : status_readdata_top <= in_bytes_cnt_datamover_status[63:32];
                 8'd60  : status_readdata_top <= emulate_fcfs_status;
+                8'd61  : status_readdata_top <= nf_forward_pkt_cnt_status;
 
                 default : status_readdata_top <= 32'h345;
             endcase
@@ -1809,7 +1817,8 @@ non_fast_pattern non_fast_pattern_inst(
     .max_raw_pkt_fifo       (nf_max_raw_pkt_fifo),
     .max_pkt_fifo           (nf_max_pkt_fifo),
     .max_rule_fifo          (nf_max_rule_fifo),
-    .forward_th             (nf_forward_th)
+    .forward_th             (nf_forward_th),
+    .forward_pkt_cnt        (nf_forward_pkt_cnt),
 );
 
 fifo_pkt_wrapper_infill #(

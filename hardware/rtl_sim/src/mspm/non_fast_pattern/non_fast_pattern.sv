@@ -57,7 +57,8 @@ module non_fast_pattern(
     output  logic [31:0]            max_raw_pkt_fifo,
     output  logic [31:0]            max_pkt_fifo,
     output  logic [31:0]            max_rule_fifo,
-    input   logic [15:0]            forward_th
+    input   logic [15:0]            forward_th,
+    output  logic [31:0]            forward_pkt_cnt
 );
 
 `ifdef DUMMY
@@ -318,6 +319,8 @@ logic forward;
 logic forward_busy;
 logic fp_fsm_busy;
 
+logic [31:0] internal_fwd_pkt_cnt;
+
 `ifdef DEBUG
 logic [15:0] raw_pkt_in_cnt;
 logic [15:0] raw_pkt_out_cnt;
@@ -330,6 +333,8 @@ logic [15:0] meta_in_cnt;
 logic [15:0] meta_out_cnt;
 
 `endif
+
+assign forward_pkt_cnt = internal_fwd_pkt_cnt;
 
 //Stats
 always @(posedge clk) begin
@@ -381,6 +386,7 @@ always @(posedge clk) begin
         forward_rule_valid <= 0;
         forward_raw_pkt_valid  <= 0;
         forward_meta_valid <= 0;
+        internal_fwd_pkt_cnt <= 0;
     end else begin
         case (state)
             IDLE: begin
@@ -473,7 +479,7 @@ always @(posedge clk) begin
             end
             FORWARD: begin
                 forward_rule_valid <= 0;
-                forward_raw_pkt_valid  <= 0;
+                forward_raw_pkt_valid <= 0;
                 if(in_rule_ready & in_rule_valid)begin
                     forward_rule_valid <= 1;
                     forward_rule_eop <= in_rule_eop;
@@ -489,6 +495,7 @@ always @(posedge clk) begin
                     if(in_eop)begin
                         temp_pkt_ready <= 0;
                         pkt_done <= 1;
+                        internal_fwd_pkt_cnt <= internal_fwd_pkt_cnt + 1;
                     end
                 end
                 if(rule_done & pkt_done)begin
