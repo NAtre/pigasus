@@ -1818,7 +1818,7 @@ non_fast_pattern non_fast_pattern_inst(
     .max_pkt_fifo           (nf_max_pkt_fifo),
     .max_rule_fifo          (nf_max_rule_fifo),
     .forward_th             (nf_forward_th),
-    .forward_pkt_cnt        (nf_forward_pkt_cnt),
+    .forward_pkt_cnt        (nf_forward_pkt_cnt)
 );
 
 fifo_pkt_wrapper_infill #(
