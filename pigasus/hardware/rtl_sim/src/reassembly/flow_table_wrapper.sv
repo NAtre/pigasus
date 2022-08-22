@@ -1,5 +1,5 @@
 `include "./src/struct_s.sv"
-// `define DEBUG
+`define DEBUG
 module flow_table_wrapper(
     input   logic           clk,
     input   logic           rst,

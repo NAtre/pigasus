@@ -1,5 +1,5 @@
 `include "./src/struct_s.sv"
-// `define DEBUG
+`define DEBUG
 
 /**
  * Implements a scheduler for the flow reassembly module, with three key

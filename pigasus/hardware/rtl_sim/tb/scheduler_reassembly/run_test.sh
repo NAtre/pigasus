@@ -20,7 +20,7 @@ if [ ! -d "data" ]; then
   printf "Data directory missing, downloading now... "
   wget -O data.tar.gz \
     https://www.dropbox.com/s/vhbkjv3c2t4u9vs/data.tar.gz?dl=0 \
-    > /dev/null 2>&1
+   
   printf "Done\n"
 
   tar -zxf data.tar.gz
@@ -32,42 +32,42 @@ run_testcase_prologue() {
   cd ../../
   rm -rf work
   rm -f vsim.wlf
-  vlib work > /dev/null 2>&1
+  vlib work
 
   common_defines=("$@")
-  vlog "${common_defines[@]}" ./src/*.*v -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/common/*.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/common/*.v > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/common_usr/*.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/common_usr/*.v > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/buffer/*.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/fast_pattern_matcher/*.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/mux/*.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/non_fast_pattern_matcher/*.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/parser/*.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/pcie/*.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/port_group/*.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/reassembly/*.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/reassembly/surge_protector/heap_ops_pkg.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/reassembly/surge_protector/*.sv -sv > /dev/null 2>&1
-  vlog "${common_defines[@]}" ./src/services/*.sv -sv > /dev/null 2>&1
+  vlog "${common_defines[@]}" ./src/*.*v -sv
+  vlog "${common_defines[@]}" ./src/common/*.sv -sv
+  vlog "${common_defines[@]}" ./src/common/*.v
+  vlog "${common_defines[@]}" ./src/common_usr/*.sv -sv
+  vlog "${common_defines[@]}" ./src/common_usr/*.v
+  vlog "${common_defines[@]}" ./src/buffer/*.sv -sv
+  vlog "${common_defines[@]}" ./src/fast_pattern_matcher/*.sv -sv
+  vlog "${common_defines[@]}" ./src/mux/*.sv -sv
+  vlog "${common_defines[@]}" ./src/non_fast_pattern_matcher/*.sv -sv
+  vlog "${common_defines[@]}" ./src/parser/*.sv -sv
+  vlog "${common_defines[@]}" ./src/pcie/*.sv -sv
+  vlog "${common_defines[@]}" ./src/port_group/*.sv -sv
+  vlog "${common_defines[@]}" ./src/reassembly/*.sv -sv
+  vlog "${common_defines[@]}" ./src/reassembly/surge_protector/heap_ops_pkg.sv -sv
+  vlog "${common_defines[@]}" ./src/reassembly/surge_protector/*.sv -sv
+  vlog "${common_defines[@]}" ./src/services/*.sv -sv
 }
 
 # Common epilogue. Arg: TestCaseName
 run_testcase_epilogue() {
-  OUTPUT=$(vsim -L $altera_mf_ver -L $altera_lnsim_ver -L $altera_ver \
+  vsim -L $altera_mf_ver -L $altera_lnsim_ver -L $altera_ver \
           -L $lpm_ver -L $sgate_ver -L $fourteennm_ver -L $fourteennm_ct1_ver \
-          -c -do "run -all" tb_scheduler_reassembly | grep -e "PASS" -e "FAIL")
+          -c -do "run -all" tb_scheduler_reassembly
 
-  if grep -q "FAIL" <<< ${OUTPUT}
-  then
-    printf "${RED}${OUTPUT}${NC}\n"
-  elif grep -q "PASS $1" <<< ${OUTPUT}
-  then
-    printf "${GREEN}PASS${NC}\n"
-  else
-    printf "${RED}Test not run${NC}\n"
-  fi
+  #if grep -q "FAIL" <<< ${OUTPUT}
+  #then
+  #  printf "${RED}${OUTPUT}${NC}\n"
+  #elif grep -q "PASS $1" <<< ${OUTPUT}
+  #then
+  #  printf "${GREEN}PASS${NC}\n"
+  #else
+  #  printf "${RED}Test not run${NC}\n"
+  #fi
 
   cd tb/scheduler_reassembly
 }
@@ -93,7 +93,7 @@ run_testcase () {
       +define+PKT_FILE_NB_LINES=${PKT_FILE_NB_LINES} \
       +define+RATE_INNOCENT=${RATE_INNOCENT} \
       +define+RATE_ATTACK=${RATE_ATTACK} \
-      ./tb/scheduler_reassembly/tb_scheduler_reassembly.sv -sv > /dev/null 2>&1
+      ./tb/scheduler_reassembly/tb_scheduler_reassembly.sv -sv
 
     run_testcase_epilogue ${TEST_CASE} # Run epilogue
   done <<< $1
@@ -102,11 +102,12 @@ run_testcase () {
 # Format: TestCaseName, PacketFile, RateInnocent,
 #         RateAttack, PacketBufferSize
 declare -a testcases=(
-    'TEST_FCFS_BASIC_INORDER,data/inorder.pkt,10,0,1024'
-    'TEST_FCFS_BASIC_OOO,data/ooo.pkt,10,0,1024'
+    #'TEST_FCFS_BASIC_INORDER,data/inorder.pkt,10,0,1024'
+    #'TEST_FCFS_BASIC_OOO,data/ooo.pkt,10,0,1024'
     'TEST_WSJF_BASIC_INORDER,data/inorder.pkt,10,0,1024'
     'TEST_WSJF_BASIC_OOO,data/ooo.pkt,10,0,1024'
-    'TEST_WSJF_ACA_MITIGATION,data/adversarial.pkt,10,1,16384'
+    'TEST_WSJF_ACA_MITIGATION,data/test_ooo_attack.pkt,4,1,2048'
+    'TEST_WSJF_ACA_MITIGATION,data/last_bug.pkt,4,1,2048'
 )
 
 for c in ${testcases[@]}; do

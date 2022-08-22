@@ -1,5 +1,5 @@
 `include "./src/struct_s.sv"
-// `define DEBUG
+`define DEBUG
 
 module flow_reassembly(
     // General inputs
